@@ -50,12 +50,12 @@ public:
 	static void SocketOnRawMessage(const void* Data, SIZE_T Size, SIZE_T BytesRemaining);
     
 	// This code is called after we sent a message to the server.
-	static void SocketOnMessageSent(const FString& MessageString);
+	static void SocketOnMessageSent(const FString& Message);
 	
 private:
 	
 	const FString WebSocket_Url = TEXT("ws://127.0.0.1:6666/");
-	const FString WebSocket_Protocol = TEXT("ws");
+	const FString WebSocket_Protocol = TEXT("wolcen");
 	TSharedPtr<IWebSocket> WebSocket;
 	
 };

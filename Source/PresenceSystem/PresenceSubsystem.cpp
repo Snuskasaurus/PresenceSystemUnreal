@@ -63,7 +63,30 @@ void UPresenceSubsystem::SendMessage()
 {
 	if (WebSocket->IsConnected())
 	{
-		WebSocket->Send("Hello");
+		static int i = 0;
+		i++;
+
+		WebSocket->Send(FString::Printf(TEXT("Hello%i"), i));
+		
+		// WebSocket->Send(FString::Printf(
+		// 	TEXT("Lorem ipsum dolor sit amet, consectetur adipiscing elit. "
+		// 		"Mauris posuere sed velit nec tristique. Orci varius natoque penatibus et magnis dis parturient montes, "
+  // 				"nascetur ridiculus mus. Nunc finibus eros eu ornare molestie. Aenean ut odio at mi dignissim viverra. "
+  // 				"Duis rutrum mollis dolor, ut porta ex."
+  // 				"Duis rutrum mollis dolor, ut porta ex."
+  // 				"Duis rutrum mollis dolor, ut porta ex."
+  // 				"Duis rutrum mollis dolor, ut porta ex."
+  // 				"Duis rutrum mollis dolor, ut porta ex."
+  // 				"Duis rutrum mollis dolor, ut porta ex."
+  // 				"Duis rutrum mollis dolor, ut porta ex."
+  // 				"Duis rutrum mollis dolor, ut porta ex."
+  // 				"Duis rutrum mollis dolor, ut porta ex."
+  // 				"Duis rutrum mollis dolor, ut porta ex."
+  // 				"Duis rutrum mollis dolor, ut porta ex."
+  // 				"Lorem ipsum dolor sit amet, consectetur adipiscing elit. "
+		// 		"Mauris posuere sed velit nec tristique. Orci varius natoque penatibus et magnis dis parturient montes, "
+		// 		"nascetur ridiculus mus. Nunc finibus eros eu ornare molestie. Aenean ut odio at mi dignissim viverra. "
+		// 		"Duis rutrum mollis dolor, ut porta ex. n%i"), i));
 	}
 }
 
@@ -98,7 +121,7 @@ void UPresenceSubsystem::SocketOnClosed(int32 StatusCode, const FString& Reason,
 
 void UPresenceSubsystem::SocketOnMessage(const FString& Message)
 {
-	DEBUG_LOG("WebSocket message=%s", *Message);
+	DEBUG_LOG("WebSocket received sent a message=%s", *Message);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -110,9 +133,9 @@ void UPresenceSubsystem::SocketOnRawMessage(const void* Data, SIZE_T Size, SIZE_
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void UPresenceSubsystem::SocketOnMessageSent(const FString& MessageString)
+void UPresenceSubsystem::SocketOnMessageSent(const FString& Message)
 {
-	DEBUG_LOG("SocketOnMessageSent");
+	DEBUG_LOG("WebSocket connnection sent a message=%s", *Message);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
