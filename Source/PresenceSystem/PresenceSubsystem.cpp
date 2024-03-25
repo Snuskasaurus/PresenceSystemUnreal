@@ -7,7 +7,8 @@
 #include "WebSocketsModule.h"
 
 #define DEBUG_LOG(Text, ...) GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::White, FString::Printf(TEXT(Text), ##__VA_ARGS__));
-#define DEBUG_LOG_SUCCESS(Text, ...) GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Green, FString::Printf(TEXT(Text), ##__VA_ARGS__));
+#define DEBUG_LOG_BLUE(Text, ...) GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Blue, FString::Printf(TEXT(Text), ##__VA_ARGS__));
+#define DEBUG_LOG_GREEN(Text, ...) GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Green, FString::Printf(TEXT(Text), ##__VA_ARGS__));
 #define DEBUG_LOG_WARNING(Text, ...) GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT(Text), ##__VA_ARGS__));
 #define DEBUG_LOG_ERROR(Text, ...) GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, FString::Printf(TEXT(Text), ##__VA_ARGS__));
 
@@ -94,7 +95,7 @@ void UPresenceSubsystem::SendMessage()
 
 void UPresenceSubsystem::SocketOnConnected()
 {
-	DEBUG_LOG_SUCCESS("Websocket connection established");
+	DEBUG_LOG_GREEN("WebSocket - Connection established");
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -102,7 +103,7 @@ void UPresenceSubsystem::SocketOnConnected()
 void UPresenceSubsystem::SocketOnConnectionError(const FString& Error)
 {
 	const FString ErrorMessage = Error.IsEmpty() ? TEXT("Unknow") : Error;
-	DEBUG_LOG_ERROR("Websocket connection failed, Error=%s", *ErrorMessage);
+	DEBUG_LOG_ERROR("WebSocket - Connection failed, Error=%s", *ErrorMessage);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -112,30 +113,30 @@ void UPresenceSubsystem::SocketOnClosed(int32 StatusCode, const FString& Reason,
 	const FString ReasonMessage = Reason.IsEmpty() ? TEXT("Unknow") : Reason;
 	if (bWasClean)
 	{
-		DEBUG_LOG("WebSocket connection closed, Reason=%s", *ReasonMessage);
+		DEBUG_LOG("WebSocket - Connection closed, Reason=%s", *ReasonMessage);
 	}
-	DEBUG_LOG_WARNING("WebSocket connection closed, Reason=%s", *ReasonMessage);
+	DEBUG_LOG_WARNING("WebSocket - Connection closed, Reason=%s", *ReasonMessage);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void UPresenceSubsystem::SocketOnMessage(const FString& Message)
 {
-	DEBUG_LOG("WebSocket received sent a message=%s", *Message);
+	DEBUG_LOG_GREEN("WebSocket - message received: %s", *Message);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void UPresenceSubsystem::SocketOnRawMessage(const void* Data, SIZE_T Size, SIZE_T BytesRemaining)
 {
-	DEBUG_LOG("SocketOnRawMessage");
+	//DEBUG_LOG_GREEN("SocketOnRawMessage");
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void UPresenceSubsystem::SocketOnMessageSent(const FString& Message)
 {
-	DEBUG_LOG("WebSocket connnection sent a message=%s", *Message);
+	DEBUG_LOG_BLUE("WebSocket - message sent: %s", *Message);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
