@@ -7,7 +7,7 @@
 #include "CoreMinimal.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 
-#include "PresenceSubsystem.generated.h"
+#include "WebsocketSubsystem.generated.h"
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -20,14 +20,14 @@ DECLARE_LOG_CATEGORY_EXTERN(PanLogWebSocket, All, All);
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 UCLASS()
-class PRESENCESYSTEM_API UPresenceSubsystem : public UGameInstanceSubsystem
+class PRESENCESYSTEM_API UWebsocketSubsystem : public UGameInstanceSubsystem
 {
 	GENERATED_BODY()
 	
 public:
 	
-	void ConnectToServer();
-	void DisconnectFromServer();
+	void Connect();
+	void Disconnect();
 
 	void SendMessage();
 	
@@ -57,5 +57,46 @@ private:
 	const FString WebSocket_Url = TEXT("ws://127.0.0.1:6666/");
 	const FString WebSocket_Protocol = TEXT("wolcen");
 	TSharedPtr<IWebSocket> WebSocket;
+	
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+enum EPlayerActivity
+{
+	Disconnected,
+	Waiting,
+	Playing,
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+struct FPlayerData
+{
+	FString	Name;
+	EPlayerActivity	Activity;
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+UCLASS()
+class PRESENCESYSTEM_API UPresenceSubsystem : public UGameInstanceSubsystem
+{
+	GENERATED_BODY()
+
+public:
+
+	void InitializePresence();
+
+	void Connect();
+	void Disconnect();
+	void ChangeActivity(EPlayerActivity NewActivity);
+
+	void OnFriendActivityChangedEvent(FString FriendName, EPlayerActivity NewActivity);
+
+private:
+
+	FPlayerData MyData;
+	TArray<FPlayerData> FriendsData;
 	
 };
