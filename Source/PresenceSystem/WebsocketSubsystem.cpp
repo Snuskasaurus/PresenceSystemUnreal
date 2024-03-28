@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "IWebSocket.h"
 #include "WebSocketsModule.h"
+#include "DebugMenu/DebugMenu.h"
 
 #define DEBUG_LOG(Text, ...) GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::White, FString::Printf(TEXT(Text), ##__VA_ARGS__));
 #define DEBUG_LOG_BLUE(Text, ...) GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Blue, FString::Printf(TEXT(Text), ##__VA_ARGS__));
@@ -17,10 +18,29 @@ DEFINE_LOG_CATEGORY(PanLogWebSocket);
 UE_DISABLE_OPTIMIZATION
 
 //----------------------------------------------------------------------------------------------------------------------
+void UWebsocketSubsystem::CreateDebugMenu()
+{
+	UPantheonGenericDebugMenuSubsystem* DebugMenuSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UPantheonGenericDebugMenuSubsystem>();
+    
+	DebugMenuSubsystem->CreateDebugMenu("NetworkDebug", "VerticalPreset", FVector2d(10, 400), true);
+	
+	const TFunction<void()> LambdaConnectButton = [this]()->void{ this->Connect(); };
+	DebugMenuSubsystem->AddButtonToDebugMenu("PresenceDebugMenu", "Default",
+	    FPanDebugMenuButtonParameters("Connect", false),LambdaConnectButton);
+	
+	const TFunction<void()> LambdaDisconnectButton = [this]()->void{ this->Disconnect(); };
+	DebugMenuSubsystem->AddButtonToDebugMenu("PresenceDebugMenu", "Default",
+		FPanDebugMenuButtonParameters("Disconnect", false),LambdaDisconnectButton);
+}
+//----------------------------------------------------------------------------------------------------------------------
+void UWebsocketSubsystem::DestroyDebugMenu()
+{
+	UPantheonGenericDebugMenuSubsystem* DebugMenuSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UPantheonGenericDebugMenuSubsystem>();
+	DebugMenuSubsystem->DestroyDebugMenu("NetworkDebug");
+}
+//----------------------------------------------------------------------------------------------------------------------
 void UWebsocketSubsystem::Connect()
 {
-	ensureAlways(this);
-	
 	WebSocket = FWebSocketsModule::Get().CreateWebSocket(WebSocket_Url, WebSocket_Protocol);
 	
 	WebSocket->OnConnected().AddLambda([]() -> void
@@ -47,14 +67,26 @@ void UWebsocketSubsystem::Connect()
 //----------------------------------------------------------------------------------------------------------------------
 void UWebsocketSubsystem::Disconnect()
 {
-	ensureAlways(this);
+	if (WebSocket.IsValid() == false)
+		return;
+
+	if (WebSocket->IsConnected() == false)
+		return;
 	
 	DEBUG_LOG("Closing WebSocket connection");
 	WebSocket->Close();
 }
 //----------------------------------------------------------------------------------------------------------------------
-void UWebsocketSubsystem::SendMessage()
+void UWebsocketSubsystem::TickWebsocketSubsystem()
 {
+	TryToSendMessage();
+}
+//----------------------------------------------------------------------------------------------------------------------
+void UWebsocketSubsystem::TryToSendMessage()
+{
+	if (WebSocket.IsValid() == false)
+		return;
+	
 	if (WebSocket->IsConnected())
 	{
 		static int i = 0;

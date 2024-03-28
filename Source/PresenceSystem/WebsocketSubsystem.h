@@ -25,11 +25,15 @@ class PRESENCESYSTEM_API UWebsocketSubsystem : public UGameInstanceSubsystem
 	GENERATED_BODY()
 	
 public:
-	
-	void Connect();
-	void Disconnect();
 
-	void SendMessage();
+	void CreateDebugMenu();
+	void DestroyDebugMenu();
+	
+	UFUNCTION() void Connect();
+	UFUNCTION() void Disconnect();
+	void TickWebsocketSubsystem();
+
+	void TryToSendMessage();
 	
 public:
 	

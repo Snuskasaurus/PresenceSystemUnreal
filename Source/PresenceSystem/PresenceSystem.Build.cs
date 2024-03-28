@@ -19,6 +19,9 @@ public class PresenceSystem : ModuleRules
 		PrivateDependencyModuleNames.AddRange(new string[]
 		{
 			"WebSockets",
+			"UMG",
+			"SlateCore",
+			"Slate",
 		});
 
 		// Uncomment if you are using Slate UI
