@@ -25,12 +25,9 @@ class PRESENCESYSTEM_API UWebsocketSubsystem : public UGameInstanceSubsystem
 	GENERATED_BODY()
 	
 public:
-
-	void CreateDebugMenu();
-	void DestroyDebugMenu();
 	
-	UFUNCTION() void Connect();
-	UFUNCTION() void Disconnect();
+	void Connect();
+	void Disconnect();
 	void TickWebsocketSubsystem();
 
 	void TryToSendMessage();
@@ -65,42 +62,3 @@ private:
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-enum EPlayerActivity
-{
-	Disconnected,
-	Waiting,
-	Playing,
-};
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-struct FPlayerData
-{
-	FString	Name;
-	EPlayerActivity	Activity;
-};
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-UCLASS()
-class PRESENCESYSTEM_API UPresenceSubsystem : public UGameInstanceSubsystem
-{
-	GENERATED_BODY()
-
-public:
-
-	void InitializePresence();
-
-	void Connect();
-	void Disconnect();
-	void ChangeActivity(EPlayerActivity NewActivity);
-
-	void OnFriendActivityChangedEvent(FString FriendName, EPlayerActivity NewActivity);
-
-private:
-
-	FPlayerData MyData;
-	TArray<FPlayerData> FriendsData;
-	
-};

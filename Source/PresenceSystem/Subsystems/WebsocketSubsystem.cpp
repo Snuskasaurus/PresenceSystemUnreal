@@ -5,39 +5,18 @@
 #include "CoreMinimal.h"
 #include "IWebSocket.h"
 #include "WebSocketsModule.h"
-#include "DebugMenu/DebugMenu.h"
+#include "PresenceSystem/DebugMenu/DebugMenu.h"
 
-#define DEBUG_LOG(Text, ...) GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::White, FString::Printf(TEXT(Text), ##__VA_ARGS__));
-#define DEBUG_LOG_BLUE(Text, ...) GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Blue, FString::Printf(TEXT(Text), ##__VA_ARGS__));
-#define DEBUG_LOG_GREEN(Text, ...) GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Green, FString::Printf(TEXT(Text), ##__VA_ARGS__));
-#define DEBUG_LOG_WARNING(Text, ...) GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT(Text), ##__VA_ARGS__));
-#define DEBUG_LOG_ERROR(Text, ...) GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, FString::Printf(TEXT(Text), ##__VA_ARGS__));
+#define DEBUG_LOG(Text, ...)			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::White, FString::Printf(TEXT(Text), ##__VA_ARGS__));
+#define DEBUG_LOG_BLUE(Text, ...)		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Blue, FString::Printf(TEXT(Text), ##__VA_ARGS__));
+#define DEBUG_LOG_GREEN(Text, ...)		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Green, FString::Printf(TEXT(Text), ##__VA_ARGS__));
+#define DEBUG_LOG_WARNING(Text, ...)	GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT(Text), ##__VA_ARGS__));
+#define DEBUG_LOG_ERROR(Text, ...)		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, FString::Printf(TEXT(Text), ##__VA_ARGS__));
 
 DEFINE_LOG_CATEGORY(PanLogWebSocket);
 
 UE_DISABLE_OPTIMIZATION
 
-//----------------------------------------------------------------------------------------------------------------------
-void UWebsocketSubsystem::CreateDebugMenu()
-{
-	UPantheonGenericDebugMenuSubsystem* DebugMenuSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UPantheonGenericDebugMenuSubsystem>();
-    
-	DebugMenuSubsystem->CreateDebugMenu("NetworkDebug", "VerticalPreset", FVector2d(10, 400), true);
-	
-	const TFunction<void()> LambdaConnectButton = [this]()->void{ this->Connect(); };
-	DebugMenuSubsystem->AddButtonToDebugMenu("PresenceDebugMenu", "Default",
-	    FPanDebugMenuButtonParameters("Connect", false),LambdaConnectButton);
-	
-	const TFunction<void()> LambdaDisconnectButton = [this]()->void{ this->Disconnect(); };
-	DebugMenuSubsystem->AddButtonToDebugMenu("PresenceDebugMenu", "Default",
-		FPanDebugMenuButtonParameters("Disconnect", false),LambdaDisconnectButton);
-}
-//----------------------------------------------------------------------------------------------------------------------
-void UWebsocketSubsystem::DestroyDebugMenu()
-{
-	UPantheonGenericDebugMenuSubsystem* DebugMenuSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UPantheonGenericDebugMenuSubsystem>();
-	DebugMenuSubsystem->DestroyDebugMenu("NetworkDebug");
-}
 //----------------------------------------------------------------------------------------------------------------------
 void UWebsocketSubsystem::Connect()
 {
@@ -130,32 +109,6 @@ void UWebsocketSubsystem::SocketOnRawMessage(const void* Data, SIZE_T Size, SIZE
 void UWebsocketSubsystem::SocketOnMessageSent(const FString& Message)
 {
 	DEBUG_LOG_BLUE("WebSocket - message sent: %s", *Message);
-}
-//----------------------------------------------------------------------------------------------------------------------
-void UPresenceSubsystem::InitializePresence()
-{
-	
-}
-//----------------------------------------------------------------------------------------------------------------------
-void UPresenceSubsystem::Connect()
-{
-	UWebsocketSubsystem* WebsocketSubsystem = GetGameInstance()->GetSubsystem<UWebsocketSubsystem>();
-	WebsocketSubsystem->Disconnect();
-}
-//----------------------------------------------------------------------------------------------------------------------
-void UPresenceSubsystem::Disconnect()
-{
-	UWebsocketSubsystem* WebsocketSubsystem = GetGameInstance()->GetSubsystem<UWebsocketSubsystem>();
-	WebsocketSubsystem->Connect();
-}
-//----------------------------------------------------------------------------------------------------------------------
-void UPresenceSubsystem::ChangeActivity(EPlayerActivity NewActivity)
-{
-	UWebsocketSubsystem* WebsocketSubsystem = GetGameInstance()->GetSubsystem<UWebsocketSubsystem>();
-}
-//----------------------------------------------------------------------------------------------------------------------
-void UPresenceSubsystem::OnFriendActivityChangedEvent(FString FriendName, EPlayerActivity NewActivity)
-{
 }
 //----------------------------------------------------------------------------------------------------------------------
 

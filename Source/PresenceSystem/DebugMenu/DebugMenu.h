@@ -15,6 +15,7 @@ class USlider;
 class UTextBlock;
 class UBorder;
 class UButton;
+class UEditableTextBox;
 class UCanvasPanelSlot;
 
 class APlayerController;
@@ -23,10 +24,13 @@ class ADebugMenu_ReplicatingActor;
 class UDebugMenuUserWidget;
 class UDebugMenu_SliderWidget;
 class UDebugMenu_ButtonWidget;
+class UDebugMenu_TextInputWidget;
+class UDebugMenu_CustomWidget;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 DECLARE_DELEGATE_OneParam(FOnDebugMenuSliderChangedValueEvent, float);
+DECLARE_DELEGATE_OneParam(FOnDebugMenuTextInputValidatedEvent, String);
 DECLARE_DELEGATE(FOnDebugMenuButtonPressedEvent)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -36,11 +40,8 @@ DECLARE_DELEGATE(FOnDebugMenuButtonPressedEvent)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-USTRUCT()
 struct FPanDebugMenuSliderParameters
 {
-	GENERATED_BODY()
-	
 	FPanDebugMenuSliderParameters() = default;
 	FPanDebugMenuSliderParameters(
 		FName const& Name,
@@ -68,11 +69,8 @@ struct FPanDebugMenuSliderParameters
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-USTRUCT()
 struct FPanDebugMenuSliderInfo
 {
-	GENERATED_BODY()
-
 	FPanDebugMenuSliderInfo() = default;
 	FPanDebugMenuSliderInfo(FPanDebugMenuSliderParameters const& SliderParameters)
 	{
@@ -96,11 +94,8 @@ struct FPanDebugMenuSliderInfo
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-USTRUCT()
 struct FPanDebugMenuButtonParameters
 {
-	GENERATED_BODY()
-	
 	FPanDebugMenuButtonParameters() = default;
 	FPanDebugMenuButtonParameters(
 		FName const& InButtonName,
@@ -116,11 +111,8 @@ struct FPanDebugMenuButtonParameters
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-USTRUCT()
 struct FPanDebugMenuButtonInfo
 {
-	GENERATED_BODY()
-
 	FPanDebugMenuButtonInfo() = default;
 	FPanDebugMenuButtonInfo(FPanDebugMenuButtonParameters const& ButtonParameters)
 	{
@@ -138,6 +130,55 @@ struct FPanDebugMenuButtonInfo
 	
 	TObjectPtr<UDebugMenu_ButtonWidget> ButtonWidget;
 	FOnDebugMenuButtonPressedEvent OnButtonPressed;
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+struct FPanDebugMenuTextInputParameters
+{
+	FPanDebugMenuTextInputParameters() = default;
+	FPanDebugMenuTextInputParameters(
+		FName const& InWidgetName,
+		bool InIsReplicated)
+	{
+		WidgetName = InWidgetName;
+		ShouldReplicate = InIsReplicated;
+	}
+	
+	FName WidgetName = "Default";
+	bool ShouldReplicate = false;
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+struct FPanDebugMenuTextInputInfo
+{
+	FPanDebugMenuTextInputInfo() = default;
+	FPanDebugMenuTextInputInfo(FPanDebugMenuTextInputParameters const& ButtonParameters)
+	{
+		WidgetName = ButtonParameters.WidgetName;
+		IsReplicated = ButtonParameters.ShouldReplicate;
+		IsWaitingForReplication = IsReplicated;
+	}
+
+	bool IsNeedingReplication() const { return IsReplicated && IsWaitingForReplication; }
+		
+	FName WidgetName = "Default";			// TODO Julien Rogel (20/03/2024): Replace later by an index maybe ?
+	FName DebugMenuName = "None";			// TODO Julien Rogel (20/03/2024): Replace later by an index maybe ?
+	bool IsReplicated = false;
+	bool IsWaitingForReplication = false;
+	
+	TObjectPtr<UDebugMenu_TextInputWidget> WidgetPtr;
+	FOnDebugMenuTextInputValidatedEvent OnTextInputValidated;
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+struct FPanDebugMenuCustomWidgetInfo
+{
+	FName WidgetName = "Default";
+	FName DebugMenuName = "None";
+	TObjectPtr<UDebugMenu_CustomWidget> WidgetPtr;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -184,6 +225,10 @@ public:
 
 	void AddSliderToDebugMenu(FName const& DebugMenuName, FName const& PresetName, FPanDebugMenuSliderParameters const& DebugMenuSliderParameters, TFunction<void(float)>);
 	void AddButtonToDebugMenu(FName const& DebugMenuName, FName const& PresetName, FPanDebugMenuButtonParameters const& DebugMenuButtonParameters, TFunction<void()>);
+	void AddTextInputToDebugMenu(FName const& DebugMenuName, FName const& PresetName, FPanDebugMenuButtonParameters const& DebugMenuButtonParameters, TFunction<void()>);
+	FPanDebugMenuCustomWidgetInfo* AddCustomWidgetToDebugMenu(FName const& DebugMenuName, FName const& WidgetName, TSubclassOf<UDebugMenu_CustomWidget> PresetClass);
+
+	void RemoveCustomWidgetFromDebugMenu(FName const& DebugMenuName, FName const& WidgetName);
 	
 	void Internal_RegisterReplicatingActorToDebugMenuOnClient(ADebugMenu_ReplicatingActor* InReplicatingActor);
 	void Internal_SetDebugMenuVisibility(FName const& DebugMenuName, bool Visibility);
@@ -218,7 +263,7 @@ protected:
 	UPROPERTY(EditDefaultsOnly)
 	TMap<FName, TSubclassOf<UDebugMenu_ButtonWidget>> ButtonClassPresets;
 
-	
+
 private:
 
 	TArray<FDebugMenuReplicatingActor_ArrayHolder> ReplicatingActorsOnServer;
@@ -228,6 +273,7 @@ private:
 	TArray<FDebugMenuWidget_ArrayHolder> DebugMenus;
 	TArray<FPanDebugMenuSliderInfo> StoredSlidersInfos;
 	TArray<FPanDebugMenuButtonInfo> StoredButtonsInfos;
+	TArray<FPanDebugMenuCustomWidgetInfo> StoredCustomWidgetInfos;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -240,8 +286,6 @@ class UDebugMenu_SliderWidget : public UUserWidget
 	GENERATED_BODY()
 	
 	friend UPantheonGenericDebugMenuSubsystem;
-
-	~UDebugMenu_SliderWidget() override;
 	
 public:
 	
@@ -292,6 +336,47 @@ private:
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/// Text Input UI (Only on client)
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+UCLASS()
+class UDebugMenu_TextInputWidget : public UUserWidget
+{
+	GENERATED_BODY()
+	
+	friend UPantheonGenericDebugMenuSubsystem;
+	
+public:
+	
+	void InitializeTextInput(FPanDebugMenuTextInputParameters const& InDebugMenuTextInputParameters);
+	
+private:
+
+	void OnTextChangedEvent(FString NewString);
+	void OnButtonPressedEvent();
+	
+private:
+	
+	TObjectPtr<UButton> ButtonWidget;
+	TObjectPtr<UEditableTextBox> TitleTextBlockWidget;
+	
+	FName ButtonName;
+	FString TextFromInput;
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/// Custom UI (Only on client)
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+UCLASS(Blueprintable)
+class UDebugMenu_CustomWidget : public UUserWidget
+{
+	GENERATED_BODY()
+	
+};
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// Debug Menu UI (Only on client)
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -306,6 +391,7 @@ public:
 	
 	UDebugMenu_SliderWidget* AddSliderToDebugMenuWidget(FPanDebugMenuSliderParameters const& DebugMenuSliderParameters, TSubclassOf<UDebugMenu_SliderWidget> SliderClass);
 	UDebugMenu_ButtonWidget* AddButtonToDebugMenuWidget(FPanDebugMenuButtonParameters const& DebugMenuButtonParameters, TSubclassOf<UDebugMenu_ButtonWidget> ButtonClass);
+	UDebugMenu_CustomWidget* AddCustomWidgetToDebugMenuWidget(TSubclassOf<UDebugMenu_CustomWidget> CustomWidgetClass);
 	
 protected:
 

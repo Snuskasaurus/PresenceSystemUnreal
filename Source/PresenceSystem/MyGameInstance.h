@@ -14,4 +14,10 @@ class PRESENCESYSTEM_API UMyGameInstance : public UGameInstance
 	UPROPERTY(EditDefaultsOnly, meta=(AllowPrivateAccess=true))
 	TSubclassOf<class UPantheonGenericDebugMenuSubsystem> PantheonGenericDebugMenuSubsystem;
 	
+	UPROPERTY(EditDefaultsOnly, meta=(AllowPrivateAccess=true))
+	TSubclassOf<class UWebsocketSubsystem> WebsocketSubsystem;
+	
+	UPROPERTY(EditDefaultsOnly, meta=(AllowPrivateAccess=true))
+	TSubclassOf<class UPresenceSubsystem> PresenceSubsystem;
+	
 };

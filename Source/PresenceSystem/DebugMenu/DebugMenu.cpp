@@ -204,6 +204,20 @@ void UPantheonGenericDebugMenuSubsystem::DestroyDebugMenu(FName const& DebugMenu
 			StoredButtonsInfos.RemoveAt(i);
 		}
 	}
+
+	for (int i = StoredCustomWidgetInfos.Num() - 1; i >= 0 ; --i)
+	{
+		FPanDebugMenuCustomWidgetInfo* CurrenCustomWidgetInfo = &StoredCustomWidgetInfos[i];
+		if (CurrenCustomWidgetInfo->DebugMenuName == DebugMenuName)
+		{
+			if (IsValid(CurrenCustomWidgetInfo->WidgetPtr))
+			{
+				CurrenCustomWidgetInfo->WidgetPtr->RemoveFromParent();
+			}
+			CurrenCustomWidgetInfo->WidgetPtr = nullptr;
+			StoredCustomWidgetInfos.RemoveAt(i);
+		}
+	}
 	
 	FDebugMenuWidget_ArrayHolder* MatchingDebugMenu = nullptr;
 	for (int i = 0; i < DebugMenus.Num(); ++i)
@@ -320,6 +334,65 @@ void UPantheonGenericDebugMenuSubsystem::AddButtonToDebugMenu(FName const& Debug
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void UPantheonGenericDebugMenuSubsystem::AddTextInputToDebugMenu(FName const& DebugMenuName, FName const& PresetName,
+	FPanDebugMenuButtonParameters const& DebugMenuButtonParameters, TFunction<void(FString)>)
+{
+	
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+FPanDebugMenuCustomWidgetInfo* UPantheonGenericDebugMenuSubsystem::AddCustomWidgetToDebugMenu(FName const& DebugMenuName, FName const& WidgetName,
+	TSubclassOf<UDebugMenu_CustomWidget> PresetClass)
+{
+	if (IsDedicatedServerCode(GetWorld()))
+		return nullptr;
+
+	const FPanDebugMenuCustomWidgetInfo NewCustomWidgetInfo = FPanDebugMenuCustomWidgetInfo();
+	const int IndexNewCustomWidget = StoredCustomWidgetInfos.Add(NewCustomWidgetInfo);
+	FPanDebugMenuCustomWidgetInfo* NewCustomWidgetInfoPtr = &StoredCustomWidgetInfos[IndexNewCustomWidget];
+	NewCustomWidgetInfoPtr->WidgetName = FName(DebugMenuName);
+	
+	FDebugMenuWidget_ArrayHolder* DebugMenuWidget_ArrayHolder = GetDebugMenuFromName(DebugMenuName);
+	if (DebugMenuWidget_ArrayHolder == nullptr)
+		return nullptr;
+	
+	UDebugMenuUserWidget* DebugMenuUserWidget = DebugMenuWidget_ArrayHolder->Widget;
+	if (DebugMenuUserWidget == nullptr)
+		return nullptr;
+	
+	UDebugMenu_CustomWidget* NewCustomWidget = DebugMenuUserWidget->AddCustomWidgetToDebugMenuWidget(PresetClass);
+	NewCustomWidgetInfoPtr->WidgetPtr = NewCustomWidget;
+
+	return NewCustomWidgetInfoPtr;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void UPantheonGenericDebugMenuSubsystem::RemoveCustomWidgetFromDebugMenu(FName const& DebugMenuName,
+	FName const& WidgetName)
+{
+	if (IsDedicatedServerCode(GetWorld()))
+		return;
+
+	for (int i = StoredCustomWidgetInfos.Num() - 1; i >= 0 ; --i)
+	{
+		FPanDebugMenuCustomWidgetInfo* CurrenCustomWidgetInfo = &StoredCustomWidgetInfos[i];
+		const bool HasSameDebugMenuName = CurrenCustomWidgetInfo->DebugMenuName == DebugMenuName;
+		const bool HasSameWidgetName = CurrenCustomWidgetInfo->WidgetName == WidgetName;
+		if (HasSameDebugMenuName && HasSameWidgetName)
+		{
+			if (IsValid(CurrenCustomWidgetInfo->WidgetPtr))
+			{
+				CurrenCustomWidgetInfo->WidgetPtr->RemoveFromParent();
+			}
+			CurrenCustomWidgetInfo->WidgetPtr = nullptr;
+			StoredCustomWidgetInfos.RemoveAt(i);
+		}
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void UPantheonGenericDebugMenuSubsystem::Internal_RegisterReplicatingActorToDebugMenuOnClient(ADebugMenu_ReplicatingActor* InReplicatingActor)
 {
@@ -546,11 +619,6 @@ bool UPantheonGenericDebugMenuSubsystem::CheckIfButtonAlreadyExist(FName const& 
 /// UDebugMenu_SliderWidget
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-UDebugMenu_SliderWidget::~UDebugMenu_SliderWidget()
-{
-	int test = 0;
-}
-
 void UDebugMenu_SliderWidget::InitializeSlider(FPanDebugMenuSliderParameters const& InDebugMenuSliderParameters)
 {
 	SliderName = InDebugMenuSliderParameters.SliderName;
@@ -689,9 +757,8 @@ void UDebugMenuUserWidget::InitializeDebugMenuWidget(FName const& Name)
 UDebugMenu_SliderWidget* UDebugMenuUserWidget::AddSliderToDebugMenuWidget(FPanDebugMenuSliderParameters const& DebugMenuSliderParameters, TSubclassOf<UDebugMenu_SliderWidget> SliderClass)
 {
 	if (DebugMenuHolderPanelWidget == nullptr)
-	{
 		return nullptr;
-	}
+	
 	UDebugMenu_SliderWidget* DebugMenuSliderWidget = WidgetTree->ConstructWidget<UDebugMenu_SliderWidget>(SliderClass); 
 	DebugMenuHolderPanelWidget->AddChild(DebugMenuSliderWidget);
 	DebugMenuSliderWidget->InitializeSlider(DebugMenuSliderParameters);
@@ -705,12 +772,25 @@ UDebugMenu_ButtonWidget* UDebugMenuUserWidget::AddButtonToDebugMenuWidget(
 	FPanDebugMenuButtonParameters const& DebugMenuButtonParameters, TSubclassOf<UDebugMenu_ButtonWidget> ButtonClass)
 {
 	if (DebugMenuHolderPanelWidget == nullptr)
-	{
 		return nullptr;
-	}
-	UDebugMenu_ButtonWidget* DebugMenuButtonWidget = WidgetTree->ConstructWidget<UDebugMenu_ButtonWidget>(ButtonClass); 
+	
+	UDebugMenu_ButtonWidget* DebugMenuCustomWidget = WidgetTree->ConstructWidget<UDebugMenu_ButtonWidget>(ButtonClass); 
+	DebugMenuHolderPanelWidget->AddChild(DebugMenuCustomWidget);
+	DebugMenuCustomWidget->InitializeButton(DebugMenuButtonParameters);
+	
+	return DebugMenuCustomWidget;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+UDebugMenu_CustomWidget* UDebugMenuUserWidget::AddCustomWidgetToDebugMenuWidget(
+	TSubclassOf<UDebugMenu_CustomWidget> CustomWidgetClass)
+{
+	if (DebugMenuHolderPanelWidget == nullptr)
+		return nullptr;
+	
+	UDebugMenu_CustomWidget* DebugMenuButtonWidget = WidgetTree->ConstructWidget<UDebugMenu_CustomWidget>(CustomWidgetClass); 
 	DebugMenuHolderPanelWidget->AddChild(DebugMenuButtonWidget);
-	DebugMenuButtonWidget->InitializeButton(DebugMenuButtonParameters);
 	
 	return DebugMenuButtonWidget;
 }
