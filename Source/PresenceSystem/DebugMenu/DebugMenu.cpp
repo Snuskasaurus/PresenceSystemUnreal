@@ -7,6 +7,8 @@
 #include "Components/Border.h"
 #include "Components/Button.h"
 #include "Components/CanvasPanelSlot.h"
+#include "Components/EditableText.h"
+#include "Components/EditableTextBox.h"
 #include "Components/PanelWidget.h"
 #include "Components/Slider.h"
 #include "Components/TextBlock.h"
@@ -18,17 +20,21 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-char const* const DEBUG_MENU_CANVAS =				"DEBUG_MENU_CANVAS";
-char const* const DEBUG_MENU_GRAB =					"DEBUG_MENU_GRAB";
-char const* const DEBUG_MENU_TITLE =				"DEBUG_MENU_TITLE";
-char const* const DEBUG_MENU_CONTAINER =			"DEBUG_MENU_CONTAINER";
+char const* const DEBUG_MENU_CANVAS =					"DEBUG_MENU_CANVAS";
+char const* const DEBUG_MENU_GRAB =						"DEBUG_MENU_GRAB";
+char const* const DEBUG_MENU_TITLE =					"DEBUG_MENU_TITLE";
+char const* const DEBUG_MENU_CONTAINER =				"DEBUG_MENU_CONTAINER";
 
-char const* const DEBUG_MENU_NAME_SLIDER_SLIDER =	"DEBUG_MENU_SLIDER_SLIDER";
-char const* const DEBUG_MENU_NAME_SLIDER_TITLE =	"DEBUG_MENU_SLIDER_TITLE";
-char const* const DEBUG_MENU_NAME_SLIDER_VALUE =	"DEBUG_MENU_SLIDER_VALUE";
+char const* const DEBUG_MENU_NAME_SLIDER_SLIDER =		"DEBUG_MENU_SLIDER_SLIDER";
+char const* const DEBUG_MENU_NAME_SLIDER_TITLE =		"DEBUG_MENU_SLIDER_TITLE";
+char const* const DEBUG_MENU_NAME_SLIDER_VALUE =		"DEBUG_MENU_SLIDER_VALUE";
 
-char const* const DEBUG_MENU_BUTTON_BUTTON =		"DEBUG_MENU_BUTTON_BUTTON";
-char const* const DEBUG_MENU_BUTTON_TITLE =			"DEBUG_MENU_BUTTON_TITLE";
+char const* const DEBUG_MENU_BUTTON_BUTTON =			"DEBUG_MENU_BUTTON_BUTTON";
+char const* const DEBUG_MENU_BUTTON_TITLE =				"DEBUG_MENU_BUTTON_TITLE";
+
+char const* const DEBUG_MENU_TEXT_INPUT_TITLE =			"DEBUG_MENU_TEXT_INPUT_TITLE";
+char const* const DEBUG_MENU_TEXT_INPUT_BUTTON =		"DEBUG_MENU_TEXT_INPUT_BUTTON";
+char const* const DEBUG_MENU_TEXT_INPUT_EDITABLE_TEXT =	"DEBUG_MENU_TEXT_INPUT_EDITABLE_TEXT";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -335,9 +341,44 @@ void UPantheonGenericDebugMenuSubsystem::AddButtonToDebugMenu(FName const& Debug
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void UPantheonGenericDebugMenuSubsystem::AddTextInputToDebugMenu(FName const& DebugMenuName, FName const& PresetName,
-	FPanDebugMenuButtonParameters const& DebugMenuButtonParameters, TFunction<void(FString)>)
+	FPanDebugMenuTextInputParameters const& DebugMenuTextInputParameters, TFunction<void(FString const&)> Lambda)
 {
+	if (CheckIfTextInputAlreadyExist(DebugMenuTextInputParameters.WidgetName) == true)
+		return;
+
+	if (IsDedicatedServerCode(GetWorld()))
+	{
+		if (DebugMenuTextInputParameters.ShouldReplicate == false)
+			return;
+	}
+
+	const FPanDebugMenuTextInputInfo NewTextInputInfo = FPanDebugMenuTextInputInfo(DebugMenuTextInputParameters);
+	const int IndexNewTextInputInfo = StoredTextInputInfos.Add(NewTextInputInfo);
+	FPanDebugMenuTextInputInfo* NewTextInputInfoPtr = &StoredTextInputInfos[IndexNewTextInputInfo];
+	NewTextInputInfoPtr->DebugMenuName = FName(DebugMenuName);
 	
+	if (IsClientCode(GetWorld()))
+	{
+		FDebugMenuWidget_ArrayHolder* DebugMenuWidget_ArrayHolder = GetDebugMenuFromName(DebugMenuName);
+		if (DebugMenuWidget_ArrayHolder == nullptr)
+			return;
+		
+		UDebugMenuUserWidget* DebugMenuUserWidget = DebugMenuWidget_ArrayHolder->Widget;
+		if (DebugMenuUserWidget == nullptr)
+			return;
+			
+		const TSubclassOf<UDebugMenu_TextInputWidget>* TextInputClass = TextInputClassPresets.Find(PresetName);
+		if (TextInputClass == nullptr)
+		{
+			UE_LOG(LogTemp, Error, TEXT("Failed to find TextInputClassPreset: %s"), *PresetName.ToString());
+			return;
+		}
+		
+		UDebugMenu_TextInputWidget* NewTextInputWidget = DebugMenuUserWidget->AddTextInputToDebugMenuWidget(DebugMenuTextInputParameters, *TextInputClass);
+		NewTextInputInfoPtr->WidgetPtr = NewTextInputWidget;
+	}
+
+	NewTextInputInfoPtr->OnTextInputValidated.BindLambda(Lambda);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -513,6 +554,42 @@ void UPantheonGenericDebugMenuSubsystem::Internal_PressButtonFromServer(FName co
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void UPantheonGenericDebugMenuSubsystem::Internal_NotifyTextChangedOnClient(FName const& WidgetName, FString const& NewString)
+{
+	FPanDebugMenuTextInputInfo* TextInputInfo = GetTextInputInfoFromName(WidgetName);
+	if (TextInputInfo == nullptr)
+		return;
+	
+	if (TextInputInfo->IsReplicated == true)
+	{
+		TextInputInfo->IsWaitingForReplication = true;
+		if (ReplicatingActorOnClient)
+		{
+			ReplicatingActorOnClient->ServerRPC_RequestTextChange(WidgetName, NewString);	
+		}
+	}
+	else
+	{
+		TextInputInfo->OnTextInputValidated.Execute(NewString);
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void UPantheonGenericDebugMenuSubsystem::Internal_NotifyTextChangedOnServer(FName const& WidgetName, FString const& NewString)
+{
+	
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void UPantheonGenericDebugMenuSubsystem::Internal_TextChangedFromServer(FName const& WidgetName, FString const& NewString)
+{
+	
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void UPantheonGenericDebugMenuSubsystem::Internal_SetDebugMenuVisibility(FName const& DebugMenuName, bool Visibility)
 {
 	for (int i = 0; i < DebugMenus.Num(); ++i)
@@ -557,13 +634,13 @@ FDebugMenuWidget_ArrayHolder* UPantheonGenericDebugMenuSubsystem::GetDebugMenuFr
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-FPanDebugMenuSliderInfo* UPantheonGenericDebugMenuSubsystem::GetSliderInfoFromName(FName const& SliderName)
+FPanDebugMenuSliderInfo* UPantheonGenericDebugMenuSubsystem::GetSliderInfoFromName(FName const& WidgetName)
 {
 	FPanDebugMenuSliderInfo* MatchingSlider = nullptr;
 	for (int i = 0; i < StoredSlidersInfos.Num(); ++i)
 	{
 		MatchingSlider = &StoredSlidersInfos[i];
-		if (MatchingSlider->SliderName == SliderName)
+		if (MatchingSlider->SliderName == WidgetName)
 		{
 			return MatchingSlider;
 		}
@@ -573,11 +650,11 @@ FPanDebugMenuSliderInfo* UPantheonGenericDebugMenuSubsystem::GetSliderInfoFromNa
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool UPantheonGenericDebugMenuSubsystem::CheckIfSliderAlreadyExist(FName const& SliderName)
+bool UPantheonGenericDebugMenuSubsystem::CheckIfSliderAlreadyExist(FName const& WidgetName)
 {
 	for (int i = 0; i < StoredSlidersInfos.Num(); ++i)
 	{
-		if (StoredSlidersInfos[i].SliderName == SliderName)
+		if (StoredSlidersInfos[i].SliderName == WidgetName)
 		{
 			return true;
 		}
@@ -587,13 +664,13 @@ bool UPantheonGenericDebugMenuSubsystem::CheckIfSliderAlreadyExist(FName const& 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-FPanDebugMenuButtonInfo* UPantheonGenericDebugMenuSubsystem::GetButtonInfoFromName(FName const& ButtonName)
+FPanDebugMenuButtonInfo* UPantheonGenericDebugMenuSubsystem::GetButtonInfoFromName(FName const& WidgetName)
 {
 	FPanDebugMenuButtonInfo* MatchingButtonInfo = nullptr;
 	for (int i = 0; i < StoredButtonsInfos.Num(); ++i)
 	{
 		MatchingButtonInfo = &StoredButtonsInfos[i];
-		if (MatchingButtonInfo->ButtonName == ButtonName)
+		if (MatchingButtonInfo->ButtonName == WidgetName)
 		{
 			return MatchingButtonInfo;
 		}
@@ -603,11 +680,41 @@ FPanDebugMenuButtonInfo* UPantheonGenericDebugMenuSubsystem::GetButtonInfoFromNa
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool UPantheonGenericDebugMenuSubsystem::CheckIfButtonAlreadyExist(FName const& ButtonName)
+bool UPantheonGenericDebugMenuSubsystem::CheckIfButtonAlreadyExist(FName const& WidgetName)
 {
 	for (int i = 0; i < StoredButtonsInfos.Num(); ++i)
 	{
-		if (StoredButtonsInfos[i].ButtonName == ButtonName)
+		if (StoredButtonsInfos[i].ButtonName == WidgetName)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+FPanDebugMenuTextInputInfo* UPantheonGenericDebugMenuSubsystem::GetTextInputInfoFromName(FName const& WidgetName)
+{
+	FPanDebugMenuTextInputInfo* MatchingButtonInfo = nullptr;
+	for (int i = 0; i < StoredTextInputInfos.Num(); ++i)
+	{
+		MatchingButtonInfo = &StoredTextInputInfos[i];
+		if (MatchingButtonInfo->WidgetName == WidgetName)
+		{
+			return MatchingButtonInfo;
+		}
+	}
+	return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool UPantheonGenericDebugMenuSubsystem::CheckIfTextInputAlreadyExist(FName const& WidgetName)
+{
+	for (int i = 0; i < StoredTextInputInfos.Num(); ++i)
+	{
+		if (StoredTextInputInfos[i].WidgetName == WidgetName)
 		{
 			return true;
 		}
@@ -734,6 +841,75 @@ void UDebugMenu_ButtonWidget::OnButtonPressedEvent()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/// UDebugMenu_TextInputWidget
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void UDebugMenu_TextInputWidget::InitializeTextInput(
+	FPanDebugMenuTextInputParameters const& InDebugMenuTextInputParameters)
+{
+	WidgetName = InDebugMenuTextInputParameters.WidgetName;
+	TextFromInput = InDebugMenuTextInputParameters.DefaultText;
+	
+	// Look for the validating button and bind the delegate
+	{
+		ButtonWidget = WidgetTree->FindWidget<UButton>(DEBUG_MENU_TEXT_INPUT_BUTTON);
+		if (ButtonWidget)
+		{
+			ButtonWidget->OnPressed.AddDynamic(this, &UDebugMenu_TextInputWidget::OnButtonPressedEvent);
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("No ButtonWidget found, please check that you created a button widget with this name: %hs"), DEBUG_MENU_TEXT_INPUT_BUTTON);
+		}
+	}
+
+	// Look for the Title text and change the title of the widget
+	{
+		TitleTextBlockWidget = WidgetTree->FindWidget<UTextBlock>(DEBUG_MENU_TEXT_INPUT_TITLE);
+		if (TitleTextBlockWidget)
+		{
+			const FText TextValue = FText::FromString(InDebugMenuTextInputParameters.WidgetName.ToString());
+			TitleTextBlockWidget->SetText(TextValue);
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("No TitleTextBlock found, please check that you created a button widget with this name: %hs"), DEBUG_MENU_TEXT_INPUT_TITLE);
+		}
+	}
+
+	// Look for the editable text widget and bind the delegates
+	{
+		EditableTextBoxWidget = WidgetTree->FindWidget<UEditableText>(DEBUG_MENU_TEXT_INPUT_EDITABLE_TEXT);
+		if (EditableTextBoxWidget)
+		{
+			EditableTextBoxWidget->OnTextChanged.AddDynamic(this, &UDebugMenu_TextInputWidget::OnTextChangedEvent);
+			
+			const FText NewText = FText::FromString(InDebugMenuTextInputParameters.DefaultText);
+			EditableTextBoxWidget->SetText(NewText);
+		}
+		else
+		{
+			UE_LOG(LogTemp, Error, TEXT("No EditableTextBoxWidget found, please check that you created a editable text widget with this name: %hs"), DEBUG_MENU_TEXT_INPUT_EDITABLE_TEXT);
+		}
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void UDebugMenu_TextInputWidget::OnTextChangedEvent(FText const& NewText)
+{
+	TextFromInput = NewText.ToString();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void UDebugMenu_TextInputWidget::OnButtonPressedEvent()
+{
+	UPantheonGenericDebugMenuSubsystem* Subsystem = GetGameInstance()->GetSubsystem<UPantheonGenericDebugMenuSubsystem>();
+	Subsystem->Internal_NotifyTextChangedOnClient(WidgetName, TextFromInput);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// UDebugMenuUserWidget
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -779,6 +955,22 @@ UDebugMenu_ButtonWidget* UDebugMenuUserWidget::AddButtonToDebugMenuWidget(
 	DebugMenuCustomWidget->InitializeButton(DebugMenuButtonParameters);
 	
 	return DebugMenuCustomWidget;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+UDebugMenu_TextInputWidget* UDebugMenuUserWidget::AddTextInputToDebugMenuWidget(
+	FPanDebugMenuTextInputParameters const& DebugMenuTextInputParameters,
+	TSubclassOf<UDebugMenu_TextInputWidget> TextInputClass)
+{
+	if (DebugMenuHolderPanelWidget == nullptr)
+		return nullptr;
+	
+	UDebugMenu_TextInputWidget* DebugMenuTextInputWidget = WidgetTree->ConstructWidget<UDebugMenu_TextInputWidget>(TextInputClass); 
+	DebugMenuHolderPanelWidget->AddChild(DebugMenuTextInputWidget);
+	DebugMenuTextInputWidget->InitializeTextInput(DebugMenuTextInputParameters);
+	
+	return DebugMenuTextInputWidget;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -901,6 +1093,20 @@ ADebugMenu_ReplicatingActor::ADebugMenu_ReplicatingActor()
 {
 	bReplicates = true;
 	bAlwaysRelevant = true;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void ADebugMenu_ReplicatingActor::ServerRPC_RequestTextChange_Implementation(FName const& WidgetName, FString const& NewString)
+{
+	GetGameInstance()->GetSubsystem<UPantheonGenericDebugMenuSubsystem>()->Internal_NotifyTextChangedOnServer(WidgetName, NewString);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void ADebugMenu_ReplicatingActor::ClientRPC_TextChange_Implementation(FName const& WidgetName, FString const& NewString)
+{
+	GetGameInstance()->GetSubsystem<UPantheonGenericDebugMenuSubsystem>()->Internal_TextChangedFromServer(WidgetName, NewString);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

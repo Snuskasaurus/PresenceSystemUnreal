@@ -15,7 +15,7 @@ class USlider;
 class UTextBlock;
 class UBorder;
 class UButton;
-class UEditableTextBox;
+class UEditableText;
 class UCanvasPanelSlot;
 
 class APlayerController;
@@ -30,7 +30,7 @@ class UDebugMenu_CustomWidget;
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 DECLARE_DELEGATE_OneParam(FOnDebugMenuSliderChangedValueEvent, float);
-DECLARE_DELEGATE_OneParam(FOnDebugMenuTextInputValidatedEvent, String);
+DECLARE_DELEGATE_OneParam(FOnDebugMenuTextInputValidatedEvent, FString const&);
 DECLARE_DELEGATE(FOnDebugMenuButtonPressedEvent)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -139,14 +139,17 @@ struct FPanDebugMenuTextInputParameters
 	FPanDebugMenuTextInputParameters() = default;
 	FPanDebugMenuTextInputParameters(
 		FName const& InWidgetName,
-		bool InIsReplicated)
+		bool InIsReplicated,
+		FString InDefaultText)
 	{
 		WidgetName = InWidgetName;
 		ShouldReplicate = InIsReplicated;
+		DefaultText = InDefaultText;
 	}
 	
 	FName WidgetName = "Default";
 	bool ShouldReplicate = false;
+	FString DefaultText;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -223,9 +226,9 @@ public:
 	void CreateDebugMenu(FName const& DebugMenuName, FName const& PresetName, FVector2d InitialPosition, bool IsDisplayedByDefault);
 	void DestroyDebugMenu(FName const& DebugMenuName);
 
-	void AddSliderToDebugMenu(FName const& DebugMenuName, FName const& PresetName, FPanDebugMenuSliderParameters const& DebugMenuSliderParameters, TFunction<void(float)>);
-	void AddButtonToDebugMenu(FName const& DebugMenuName, FName const& PresetName, FPanDebugMenuButtonParameters const& DebugMenuButtonParameters, TFunction<void()>);
-	void AddTextInputToDebugMenu(FName const& DebugMenuName, FName const& PresetName, FPanDebugMenuButtonParameters const& DebugMenuButtonParameters, TFunction<void()>);
+	void AddSliderToDebugMenu(FName const& DebugMenuName, FName const& PresetName, FPanDebugMenuSliderParameters const& DebugMenuSliderParameters, TFunction<void(float)> Lambda);
+	void AddButtonToDebugMenu(FName const& DebugMenuName, FName const& PresetName, FPanDebugMenuButtonParameters const& DebugMenuButtonParameters, TFunction<void()> Lambda);
+	void AddTextInputToDebugMenu(FName const& DebugMenuName, FName const& PresetName, FPanDebugMenuTextInputParameters const& DebugMenuTextInputParameters, TFunction<void(FString const&)> Lambda);
 	FPanDebugMenuCustomWidgetInfo* AddCustomWidgetToDebugMenu(FName const& DebugMenuName, FName const& WidgetName, TSubclassOf<UDebugMenu_CustomWidget> PresetClass);
 
 	void RemoveCustomWidgetFromDebugMenu(FName const& DebugMenuName, FName const& WidgetName);
@@ -233,24 +236,31 @@ public:
 	void Internal_RegisterReplicatingActorToDebugMenuOnClient(ADebugMenu_ReplicatingActor* InReplicatingActor);
 	void Internal_SetDebugMenuVisibility(FName const& DebugMenuName, bool Visibility);
 	
-	void Internal_NotifyNewSliderValueOnClient(FName const& SliderName, float NewValue);
-	void Internal_NotifyNewSliderValueOnServer(FName const& SliderName, float NewValue);
-	void Internal_UpdateClientSliderValueFromServer(FName const& SliderName, float NewValue);
+	void Internal_NotifyNewSliderValueOnClient(FName const& WidgetName, float NewValue);
+	void Internal_NotifyNewSliderValueOnServer(FName const& WidgetName, float NewValue);
+	void Internal_UpdateClientSliderValueFromServer(FName const& WidgetName, float NewValue);
 
-	void Internal_NotifyButtonPressedOnClient(FName const& ButtonName);
-	void Internal_NotifyButtonPressedOnServer(FName const& ButtonName);
-	void Internal_PressButtonFromServer(FName const& ButtonName);
-
+	void Internal_NotifyButtonPressedOnClient(FName const& WidgetName);
+	void Internal_NotifyButtonPressedOnServer(FName const& WidgetName);
+	void Internal_PressButtonFromServer(FName const& WidgetName);
+	
+	void Internal_NotifyTextChangedOnClient(FName const& WidgetName, FString const& NewString);
+	void Internal_NotifyTextChangedOnServer(FName const& WidgetName, FString const& NewString);
+	void Internal_TextChangedFromServer(FName const& WidgetName, FString const& NewString);
+	
 private:
 
 	void Exec_DisplayDebugMenu(const TArray<FString>& Args);
 	FDebugMenuWidget_ArrayHolder* GetDebugMenuFromName(FName const& DebugMenuName);
 	
 	FPanDebugMenuSliderInfo* GetSliderInfoFromName(FName const& SliderName);
-	bool CheckIfSliderAlreadyExist(FName const& SliderName);
+	bool CheckIfSliderAlreadyExist(FName const& WidgetName);
 	
 	FPanDebugMenuButtonInfo* GetButtonInfoFromName(FName const& ButtonName);
-	bool CheckIfButtonAlreadyExist(FName const& ButtonName);
+	bool CheckIfButtonAlreadyExist(FName const& WidgetName);
+	
+	FPanDebugMenuTextInputInfo* GetTextInputInfoFromName(FName const& ButtonName);
+	bool CheckIfTextInputAlreadyExist(FName const& WidgetName);
 	
 protected:
 
@@ -262,17 +272,21 @@ protected:
 	
 	UPROPERTY(EditDefaultsOnly)
 	TMap<FName, TSubclassOf<UDebugMenu_ButtonWidget>> ButtonClassPresets;
+	
+	UPROPERTY(EditDefaultsOnly)
+	TMap<FName, TSubclassOf<UDebugMenu_TextInputWidget>> TextInputClassPresets;
 
 
 private:
 
 	TArray<FDebugMenuReplicatingActor_ArrayHolder> ReplicatingActorsOnServer;
 	ADebugMenu_ReplicatingActor* ReplicatingActorOnClient;
-	
 	IConsoleCommand* cmd_DisplayDebugMenu;
 	TArray<FDebugMenuWidget_ArrayHolder> DebugMenus;
+	
 	TArray<FPanDebugMenuSliderInfo> StoredSlidersInfos;
 	TArray<FPanDebugMenuButtonInfo> StoredButtonsInfos;
+	TArray<FPanDebugMenuTextInputInfo> StoredTextInputInfos;
 	TArray<FPanDebugMenuCustomWidgetInfo> StoredCustomWidgetInfos;
 };
 
@@ -280,7 +294,7 @@ private:
 /// Slider UI (Only on client)
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-UCLASS()
+UCLASS(Abstract)
 class UDebugMenu_SliderWidget : public UUserWidget
 {
 	GENERATED_BODY()
@@ -312,7 +326,7 @@ private:
 /// Button UI (Only on client)
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-UCLASS()
+UCLASS(Abstract)
 class UDebugMenu_ButtonWidget : public UUserWidget
 {
 	GENERATED_BODY()
@@ -339,7 +353,7 @@ private:
 /// Text Input UI (Only on client)
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-UCLASS()
+UCLASS(Abstract)
 class UDebugMenu_TextInputWidget : public UUserWidget
 {
 	GENERATED_BODY()
@@ -352,15 +366,16 @@ public:
 	
 private:
 
-	void OnTextChangedEvent(FString NewString);
-	void OnButtonPressedEvent();
+	UFUNCTION() void OnTextChangedEvent(FText const& NewText);
+	UFUNCTION() void OnButtonPressedEvent();
 	
 private:
 	
+	TObjectPtr<UTextBlock> TitleTextBlockWidget;
 	TObjectPtr<UButton> ButtonWidget;
-	TObjectPtr<UEditableTextBox> TitleTextBlockWidget;
+	TObjectPtr<UEditableText> EditableTextBoxWidget;
 	
-	FName ButtonName;
+	FName WidgetName;
 	FString TextFromInput;
 };
 
@@ -368,11 +383,10 @@ private:
 /// Custom UI (Only on client)
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-UCLASS(Blueprintable)
+UCLASS(Abstract)
 class UDebugMenu_CustomWidget : public UUserWidget
 {
 	GENERATED_BODY()
-	
 };
 
 
@@ -391,6 +405,7 @@ public:
 	
 	UDebugMenu_SliderWidget* AddSliderToDebugMenuWidget(FPanDebugMenuSliderParameters const& DebugMenuSliderParameters, TSubclassOf<UDebugMenu_SliderWidget> SliderClass);
 	UDebugMenu_ButtonWidget* AddButtonToDebugMenuWidget(FPanDebugMenuButtonParameters const& DebugMenuButtonParameters, TSubclassOf<UDebugMenu_ButtonWidget> ButtonClass);
+	UDebugMenu_TextInputWidget* AddTextInputToDebugMenuWidget(FPanDebugMenuTextInputParameters const& DebugMenuTextInputParameters, TSubclassOf<UDebugMenu_TextInputWidget> TextInputClass);
 	UDebugMenu_CustomWidget* AddCustomWidgetToDebugMenuWidget(TSubclassOf<UDebugMenu_CustomWidget> CustomWidgetClass);
 	
 protected:
@@ -438,11 +453,15 @@ public:
 	void ServerRPC_RequestPressButton(FName const& ButtonName);
 	UFUNCTION(Client, Unreliable)
 	void ClientRPC_PressButton(FName const& ButtonName);
+	
+	UFUNCTION(Server, Unreliable)
+	void ServerRPC_RequestTextChange(FName const& WidgetName, FString const& NewString);
+	UFUNCTION(Client, Unreliable)
+	void ClientRPC_TextChange(FName const& WidgetName, FString const& NewString);
 
 protected:
 
 	virtual void BeginPlay() override;
-	
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

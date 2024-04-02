@@ -9,6 +9,8 @@
 #include "GameFramework/GameUserSettings.h"
 #include "Subsystems/PresenceSystem.h"
 
+#define DEBUG_LOG(Text, ...)			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::White, FString::Printf(TEXT(Text), ##__VA_ARGS__));
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void AMyPlayerController::BeginPlay()
@@ -34,16 +36,20 @@ void AMyPlayerController::BeginPlay()
 		DebugMenuSubsystem->CreateDebugMenu("NetDebugMenu", "VerticalPreset", FVector2d(10, 400), true);
 	
 		const TFunction<void()> LambdaConnectButton = [this]()->void{ this->ConnectToServer(); };
-		DebugMenuSubsystem->AddButtonToDebugMenu("NetDebugMenu", "Default",
+		DebugMenuSubsystem->AddButtonToDebugMenu("NetDebugMenu", "DefaultPreset",
 			FPanDebugMenuButtonParameters("Connect", false),LambdaConnectButton);
 	
 		const TFunction<void()> LambdaActivityButton = [this]()->void{ this->ChangePlayerActivity(); };
-		DebugMenuSubsystem->AddButtonToDebugMenu("NetDebugMenu", "Default",
+		DebugMenuSubsystem->AddButtonToDebugMenu("NetDebugMenu", "DefaultPreset",
 			FPanDebugMenuButtonParameters("Change activity", false),LambdaActivityButton);
 	
 		const TFunction<void()> LambdaDisconnectButton = [this]()->void{ this->DisconnectFromServer(); };
-		DebugMenuSubsystem->AddButtonToDebugMenu("NetDebugMenu", "Default",
+		DebugMenuSubsystem->AddButtonToDebugMenu("NetDebugMenu", "DefaultPreset",
 			FPanDebugMenuButtonParameters("Disconnect", false),LambdaDisconnectButton);
+		
+		const TFunction<void(FString const&)> LambdaChangeName = [this](FString const& NewName)->void{ this->ChangeOnlinePlayerName(NewName); };
+		DebugMenuSubsystem->AddTextInputToDebugMenu("NetDebugMenu", "DefaultPreset",
+			FPanDebugMenuTextInputParameters("OnlineName", false, "Player1"), LambdaChangeName);
 	}
 }
 
@@ -103,6 +109,13 @@ void AMyPlayerController::ChangePlayerActivity()
 	UPresenceSubsystem* PresenceSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UPresenceSubsystem>();
     
 	DebugMenuSubsystem->AddCustomWidgetToDebugMenu("NetDebugMenu", "LocalPlayer", PresenceSubsystem->PresenceWidgetClassPreset);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void AMyPlayerController::ChangeOnlinePlayerName(FString const& InPlayerName)
+{
+	DEBUG_LOG("New Player name = %s", *InPlayerName);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

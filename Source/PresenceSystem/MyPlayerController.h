@@ -18,4 +18,5 @@ class PRESENCESYSTEM_API AMyPlayerController : public APlayerController
 	void ConnectToServer();
 	void DisconnectFromServer();
 	void ChangePlayerActivity();
+	void ChangeOnlinePlayerName(FString const& InPlayerName);
 };
