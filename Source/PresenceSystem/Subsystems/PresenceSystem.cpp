@@ -96,32 +96,38 @@ void UPresenceSubsystem::SetLocalPlayerName(FString const& InLocalPlayerName)
 
 void UPresenceSubsystem::RequestChangeActivity(EOnline_PlayerActivity NewActivity)
 {
-	FString RequestString = "";
-	
+	TSharedRef<FJsonObject> RequestJsonObject = MakeShared<FJsonObject>();
 	{
-		FString StringFromStruct = "";
-		const FOnline_RequestHeader RequestHeader = FOnline_RequestHeader(LocalPlayerName, EOnline_RequestType::ChangeActivity);
-		const bool bSuccessConverting = FJsonObjectConverter::UStructToJsonObjectString(RequestHeader, StringFromStruct);
+		FString content = UEnum::GetValueAsString(NewActivity);
+		FOnline_Request Request = FOnline_Request(LocalPlayerName, EOnline_RequestType::ChangeActivity, content);
+
+		const bool bSuccessConverting = FJsonObjectConverter::UStructToJsonObject(FOnline_Request::StaticStruct(), &Request, RequestJsonObject);
+		//const bool bSuccessConverting = FJsonObjectConverter::UStructToJsonObjectString(Request, RequestString);
 		if (bSuccessConverting == false)
 		{
 			return;
 		}
-		RequestString += StringFromStruct;
-	}
-	{
-		FString StringFromStruct = "";
-		const FOnline_Request_ChangeActivity RequestStruct = FOnline_Request_ChangeActivity(NewActivity);
-		const bool bSuccessConverting = FJsonObjectConverter::UStructToJsonObjectString(RequestStruct, StringFromStruct);
-		if (bSuccessConverting == false)
-		{
-			return;
-		}
-		RequestString += StringFromStruct;
 	}
 
-	CurrentLocalActivity = NewActivity;
+#if 0 // USE_NESTED_JSON
+	TSharedRef<FJsonObject> ContentJsonObject = MakeShared<FJsonObject>();
+	{
+		const FOnline_RequestContent_ChangeActivity RequestContent = FOnline_RequestContent_ChangeActivity(NewActivity);
+		const bool bSuccessConverting = FJsonObjectConverter::UStructToJsonObject(FOnline_RequestContent_ChangeActivity::StaticStruct(), &RequestContent, ContentJsonObject);
+		if (bSuccessConverting == false)
+		{
+			return;
+		}
+		RequestJsonObject->SetObjectField("Content", ContentJsonObject);
+	}
+#endif
+	
+	FString OutputString;
+	TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&OutputString);
+	FJsonSerializer::Serialize(RequestJsonObject, Writer);
+	
 	UWebsocketSubsystem* WebsocketSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UWebsocketSubsystem>();
-	WebsocketSubsystem->TryToSendMessage(RequestString);
+	WebsocketSubsystem->TryToSendMessage(OutputString);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

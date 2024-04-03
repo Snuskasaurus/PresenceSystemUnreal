@@ -47,26 +47,27 @@ enum EOnline_RequestType
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 USTRUCT()
-struct FOnline_RequestHeader
+struct FOnline_Request
 {
 	GENERATED_BODY()
-	FOnline_RequestHeader() = default;
-	FOnline_RequestHeader(FString const& InPlayerName, EOnline_RequestType InRequestType)
-		: PlayerName(InPlayerName), RequestType(InRequestType) {};
+	FOnline_Request() = default;
+	FOnline_Request(FString const& InPlayerName, EOnline_RequestType InRequestType, FString const& InContent)
+		: PlayerName(InPlayerName), RequestType(InRequestType), Content(InContent) {};
 	
 	UPROPERTY() FString PlayerName;
 	UPROPERTY() TEnumAsByte<EOnline_RequestType> RequestType;
+	UPROPERTY() FString Content;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 USTRUCT()
-struct FOnline_Request_ChangeActivity
+struct FOnline_RequestContent_ChangeActivity
 {
 	GENERATED_BODY()
 	
-	FOnline_Request_ChangeActivity() = default;
-	FOnline_Request_ChangeActivity(EOnline_PlayerActivity InPlayerActivity)
+	FOnline_RequestContent_ChangeActivity() = default;
+	FOnline_RequestContent_ChangeActivity(EOnline_PlayerActivity InPlayerActivity)
 		: PlayerActivity(InPlayerActivity) {};
 	
 	UPROPERTY() TEnumAsByte<EOnline_PlayerActivity> PlayerActivity;
