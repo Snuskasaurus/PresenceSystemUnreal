@@ -15,8 +15,9 @@ class PRESENCESYSTEM_API AMyPlayerController : public APlayerController
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void Tick(float DeltaSeconds) override;
 
-	void ConnectToServer();
-	void DisconnectFromServer();
+	void ConnectToWebsocketServer();
+	void DisconnectFromWebsocketServer();
+	void TogglePresence();
 	void ChangePlayerActivity();
 	void ChangeOnlinePlayerName(FString const& InPlayerName);
 };

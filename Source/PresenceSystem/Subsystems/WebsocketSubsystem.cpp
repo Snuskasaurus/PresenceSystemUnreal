@@ -22,22 +22,22 @@ void UWebsocketSubsystem::Connect()
 {
 	WebSocket = FWebSocketsModule::Get().CreateWebSocket(WebSocket_Url, WebSocket_Protocol);
 	
-	WebSocket->OnConnected().AddLambda([]() -> void
+	WebSocket->OnConnected().AddLambda([this]() -> void
 		{ UWebsocketSubsystem::SocketOnConnected(); });
 	
-	WebSocket->OnConnectionError().AddLambda([](const FString & Error) -> void
+	WebSocket->OnConnectionError().AddLambda([this](const FString & Error) -> void
 		{ UWebsocketSubsystem::SocketOnConnectionError(Error); });
 	
-	WebSocket->OnClosed().AddLambda([](int32 StatusCode, const FString& Reason, bool bWasClean) -> void
+	WebSocket->OnClosed().AddLambda([this](int32 StatusCode, const FString& Reason, bool bWasClean) -> void
 		{ UWebsocketSubsystem::SocketOnClosed(StatusCode, Reason, bWasClean); });
 	
-	WebSocket->OnMessage().AddLambda([](const FString & Message) -> void
+	WebSocket->OnMessage().AddLambda([this](const FString & Message) -> void
 		{ UWebsocketSubsystem::SocketOnMessage(Message); });
 	
-	WebSocket->OnRawMessage().AddLambda([](const void* Data, SIZE_T Size, SIZE_T BytesRemaining) -> void
+	WebSocket->OnRawMessage().AddLambda([this](const void* Data, SIZE_T Size, SIZE_T BytesRemaining) -> void
 		{ UWebsocketSubsystem::SocketOnRawMessage(Data, Size, BytesRemaining); });
 	
-	WebSocket->OnMessageSent().AddLambda([](const FString& MessageString) -> void
+	WebSocket->OnMessageSent().AddLambda([this](const FString& MessageString) -> void
 		{ UWebsocketSubsystem::SocketOnMessageSent(MessageString); });
 	
 	DEBUG_LOG("Trying to establish WebSocket connection...");
@@ -58,26 +58,30 @@ void UWebsocketSubsystem::Disconnect()
 //----------------------------------------------------------------------------------------------------------------------
 void UWebsocketSubsystem::TickWebsocketSubsystem()
 {
-	TryToSendMessage();
+	
 }
 //----------------------------------------------------------------------------------------------------------------------
-void UWebsocketSubsystem::TryToSendMessage()
+bool UWebsocketSubsystem::TryToSendMessage(FString const& Message)
 {
 	if (WebSocket.IsValid() == false)
-		return;
+		return false;
+
+	if (Message.IsEmpty() == true)
+		return false;
 	
-	if (WebSocket->IsConnected())
-	{
-		static int i = 0;
-		i++;
-		
-		WebSocket->Send(FString::Printf(TEXT("Hello%i"), i));
-	}
+	if (WebSocket->IsConnected() == false)
+		return false;
+	
+	WebSocket->Send(Message);
+
+	return true;
 }
 //----------------------------------------------------------------------------------------------------------------------
 void UWebsocketSubsystem::SocketOnConnected()
 {
 	DEBUG_LOG_GREEN("WebSocket - Connection established");
+	
+	IsConnected = true;
 }
 //----------------------------------------------------------------------------------------------------------------------
 void UWebsocketSubsystem::SocketOnConnectionError(const FString& Error)
@@ -94,6 +98,8 @@ void UWebsocketSubsystem::SocketOnClosed(int32 StatusCode, const FString& Reason
 		DEBUG_LOG("WebSocket - Connection closed, Reason=%s", *ReasonMessage);
 	}
 	DEBUG_LOG_WARNING("WebSocket - Connection closed, Reason=%s", *ReasonMessage);
+	
+	IsConnected = false;
 }
 //----------------------------------------------------------------------------------------------------------------------
 void UWebsocketSubsystem::SocketOnMessage(const FString& Message)

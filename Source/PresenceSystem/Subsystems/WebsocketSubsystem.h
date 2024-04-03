@@ -30,34 +30,38 @@ public:
 	void Disconnect();
 	void TickWebsocketSubsystem();
 
-	void TryToSendMessage();
+	bool CheckIfConnected() { return IsConnected; }
+	
+	bool TryToSendMessage(FString const& Message);
 	
 public:
 	
 	// This code will run once connected.
-	static void SocketOnConnected();
+	void SocketOnConnected();
 	
 	// This code will run if the connection failed. Check Error to see what happened.
-	static void SocketOnConnectionError(const FString & Error);
+	void SocketOnConnectionError(const FString & Error);
 	
 	// This code will run when the connection to the server has been terminated.
 	// Because of an error or a call to Socket->Close().
-	static void SocketOnClosed(int32 StatusCode, const FString& Reason, bool bWasClean);
+	void SocketOnClosed(int32 StatusCode, const FString& Reason, bool bWasClean);
     
 	// This code will run when we receive a string message from the server.
-	static void SocketOnMessage(const FString & Message);
+	void SocketOnMessage(const FString & Message);
     
 	// This code will run when we receive a raw (binary) message from the server.
-	static void SocketOnRawMessage(const void* Data, SIZE_T Size, SIZE_T BytesRemaining);
+	void SocketOnRawMessage(const void* Data, SIZE_T Size, SIZE_T BytesRemaining);
     
 	// This code is called after we sent a message to the server.
-	static void SocketOnMessageSent(const FString& Message);
+	void SocketOnMessageSent(const FString& Message);
 	
 private:
 	
 	const FString WebSocket_Url = TEXT("ws://127.0.0.1:6666/");
 	const FString WebSocket_Protocol = TEXT("wolcen");
 	TSharedPtr<IWebSocket> WebSocket;
+
+	bool IsConnected = false;
 	
 };
 

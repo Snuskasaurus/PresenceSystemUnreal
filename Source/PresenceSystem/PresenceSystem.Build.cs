@@ -18,6 +18,8 @@ public class PresenceSystem : ModuleRules
 
 		PrivateDependencyModuleNames.AddRange(new string[]
 		{
+			"Json",
+			"JsonUtilities",
 			"WebSockets",
 			"UMG",
 			"SlateCore",

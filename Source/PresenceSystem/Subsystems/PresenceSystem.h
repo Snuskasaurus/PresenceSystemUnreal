@@ -28,7 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 UENUM(BlueprintType)
-enum EPlayerActivity
+enum EOnline_PlayerActivity
 {
 	DISCONNECTED,
 	IN_MENU,
@@ -37,17 +37,39 @@ enum EPlayerActivity
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct FOnline_Request_FriendList
+UENUM(BlueprintType)
+enum EOnline_RequestType
 {
-	FString LocalPlayerName;
+	FriendList,
+	ChangeActivity,
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+USTRUCT()
+struct FOnline_RequestHeader
+{
+	GENERATED_BODY()
+	FOnline_RequestHeader() = default;
+	FOnline_RequestHeader(FString const& InPlayerName, EOnline_RequestType InRequestType)
+		: PlayerName(InPlayerName), RequestType(InRequestType) {};
+	
+	UPROPERTY() FString PlayerName;
+	UPROPERTY() TEnumAsByte<EOnline_RequestType> RequestType;
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+USTRUCT()
 struct FOnline_Request_ChangeActivity
 {
-	FString LocalPlayerName;
-	EPlayerActivity PlayerActivity;
+	GENERATED_BODY()
+	
+	FOnline_Request_ChangeActivity() = default;
+	FOnline_Request_ChangeActivity(EOnline_PlayerActivity InPlayerActivity)
+		: PlayerActivity(InPlayerActivity) {};
+	
+	UPROPERTY() TEnumAsByte<EOnline_PlayerActivity> PlayerActivity;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -55,7 +77,7 @@ struct FOnline_Request_ChangeActivity
 struct FOnline_Response_FriendActivityChanged
 {
 	FString PlayerName;
-	EPlayerActivity PlayerActivity;
+	EOnline_PlayerActivity PlayerActivity;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -67,11 +89,11 @@ class UDebugMenu_PresenceFriendWidget : public UDebugMenu_CustomWidget
 
 public:
 	void SetPlayerName(FString InPlayerName) { PlayerName = InPlayerName; }
-	void SetPlayerActivity(EPlayerActivity InPlayerActivity) { PlayerActivity = InPlayerActivity; }
+	void SetPlayerActivity(EOnline_PlayerActivity InPlayerActivity) { PlayerActivity = InPlayerActivity; }
 	
 protected:
 	UPROPERTY(BlueprintReadOnly) FString PlayerName;
-	UPROPERTY(BlueprintReadOnly) TEnumAsByte<EPlayerActivity> PlayerActivity;
+	UPROPERTY(BlueprintReadOnly) TEnumAsByte<EOnline_PlayerActivity> PlayerActivity;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -84,16 +106,23 @@ class PRESENCESYSTEM_API UPresenceSubsystem : public UGameInstanceSubsystem
 public:
 
 	virtual bool ShouldCreateSubsystem(UObject* Outer) const override;
-	
-	void RequestFriendList();
-	void RequestChangeActivity();
+
+	void TogglePresence();
+	void SetLocalPlayerName(FString const& InLocalPlayerName);
+	void RequestChangeActivity(EOnline_PlayerActivity NewActivity);
 	
 	void OnFriendActivityChanged();
 
 public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) TSubclassOf<UDebugMenu_PresenceFriendWidget> PresenceWidgetClassPreset;
-	
+
+private:
+
+	FString LocalPlayerName;
+	EOnline_PlayerActivity CurrentLocalActivity;
+
+	FPanDebugMenuCustomWidgetInfo* LocalPlayerWidgetInfo;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

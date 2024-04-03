@@ -34,23 +34,33 @@ void AMyPlayerController::BeginPlay()
 		UPantheonGenericDebugMenuSubsystem* DebugMenuSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UPantheonGenericDebugMenuSubsystem>();
     
 		DebugMenuSubsystem->CreateDebugMenu("NetDebugMenu", "VerticalPreset", FVector2d(10, 400), true);
-	
-		const TFunction<void()> LambdaConnectButton = [this]()->void{ this->ConnectToServer(); };
-		DebugMenuSubsystem->AddButtonToDebugMenu("NetDebugMenu", "DefaultPreset",
-			FPanDebugMenuButtonParameters("Connect", false),LambdaConnectButton);
-	
-		const TFunction<void()> LambdaActivityButton = [this]()->void{ this->ChangePlayerActivity(); };
-		DebugMenuSubsystem->AddButtonToDebugMenu("NetDebugMenu", "DefaultPreset",
-			FPanDebugMenuButtonParameters("Change activity", false),LambdaActivityButton);
-	
-		const TFunction<void()> LambdaDisconnectButton = [this]()->void{ this->DisconnectFromServer(); };
-		DebugMenuSubsystem->AddButtonToDebugMenu("NetDebugMenu", "DefaultPreset",
-			FPanDebugMenuButtonParameters("Disconnect", false),LambdaDisconnectButton);
-		
-		const TFunction<void(FString const&)> LambdaChangeName = [this](FString const& NewName)->void{ this->ChangeOnlinePlayerName(NewName); };
-		DebugMenuSubsystem->AddTextInputToDebugMenu("NetDebugMenu", "DefaultPreset",
-			FPanDebugMenuTextInputParameters("OnlineName", false, "Player1"), LambdaChangeName);
-	}
+
+		{
+			const TFunction<void()> Lambda = [this]()->void{ this->ConnectToWebsocketServer(); };
+			DebugMenuSubsystem->AddButtonToDebugMenu("NetDebugMenu", "DefaultPreset",
+				FPanDebugMenuButtonParameters("Connect", false),Lambda);
+		}
+		{
+			const TFunction<void()> Lambda = [this]()->void{ this->TogglePresence(); };
+			DebugMenuSubsystem->AddButtonToDebugMenu("NetDebugMenu", "DefaultPreset",
+				FPanDebugMenuButtonParameters("Toggle Presence Connection", false),Lambda);
+		}
+		{
+			const TFunction<void()> Lambda = [this]()->void{ this->ChangePlayerActivity(); };
+			DebugMenuSubsystem->AddButtonToDebugMenu("NetDebugMenu", "DefaultPreset",
+				FPanDebugMenuButtonParameters("Change Presence Activity", false),Lambda);
+		}
+		{
+			const TFunction<void()> Lambda = [this]()->void{ this->DisconnectFromWebsocketServer(); };
+			DebugMenuSubsystem->AddButtonToDebugMenu("NetDebugMenu", "DefaultPreset",
+				FPanDebugMenuButtonParameters("Disconnect", false),Lambda);
+		}
+		{
+			const TFunction<void(FString const&)> Lambda = [this](FString const& NewName)->void{ this->ChangeOnlinePlayerName(NewName); };
+			DebugMenuSubsystem->AddTextInputToDebugMenu("NetDebugMenu", "DefaultPreset",
+				FPanDebugMenuTextInputParameters("OnlineName", false, "Player1"), Lambda);
+		}
+}
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -89,15 +99,27 @@ void AMyPlayerController::Tick(float DeltaSeconds)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void AMyPlayerController::ConnectToServer()
+void AMyPlayerController::ConnectToWebsocketServer()
 {
-	
+	UWebsocketSubsystem* WebsocketSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UWebsocketSubsystem>();
+	WebsocketSubsystem->Connect();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void AMyPlayerController::DisconnectFromServer()
+void AMyPlayerController::DisconnectFromWebsocketServer()
 {
+	
+	UWebsocketSubsystem* WebsocketSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UWebsocketSubsystem>();
+	WebsocketSubsystem->Disconnect();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void AMyPlayerController::TogglePresence()
+{
+	UPresenceSubsystem* PresenceSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UPresenceSubsystem>();
+	PresenceSubsystem->TogglePresence();
 	
 }
 
@@ -105,16 +127,15 @@ void AMyPlayerController::DisconnectFromServer()
 
 void AMyPlayerController::ChangePlayerActivity()
 {
-	UPantheonGenericDebugMenuSubsystem* DebugMenuSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UPantheonGenericDebugMenuSubsystem>();
 	UPresenceSubsystem* PresenceSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UPresenceSubsystem>();
-    
-	DebugMenuSubsystem->AddCustomWidgetToDebugMenu("NetDebugMenu", "LocalPlayer", PresenceSubsystem->PresenceWidgetClassPreset);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void AMyPlayerController::ChangeOnlinePlayerName(FString const& InPlayerName)
 {
+	UPresenceSubsystem* PresenceSubsystem = GetWorld()->GetGameInstance()->GetSubsystem<UPresenceSubsystem>();
+	PresenceSubsystem->SetLocalPlayerName(InPlayerName);
 	DEBUG_LOG("New Player name = %s", *InPlayerName);
 }
 
