@@ -19,7 +19,7 @@ DECLARE_LOG_CATEGORY_EXTERN(PanLogWebSocket, All, All);
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-UCLASS()
+UCLASS(Blueprintable, Abstract)
 class PRESENCESYSTEM_API UWebsocketSubsystem : public UGameInstanceSubsystem
 {
 	GENERATED_BODY()

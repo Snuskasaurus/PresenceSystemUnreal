@@ -389,10 +389,11 @@ FPanDebugMenuCustomWidgetInfo* UPantheonGenericDebugMenuSubsystem::AddCustomWidg
 	if (IsDedicatedServerCode(GetWorld()))
 		return nullptr;
 
-	const FPanDebugMenuCustomWidgetInfo NewCustomWidgetInfo = FPanDebugMenuCustomWidgetInfo();
+	FPanDebugMenuCustomWidgetInfo NewCustomWidgetInfo = FPanDebugMenuCustomWidgetInfo();
 	const int IndexNewCustomWidget = StoredCustomWidgetInfos.Add(NewCustomWidgetInfo);
 	FPanDebugMenuCustomWidgetInfo* NewCustomWidgetInfoPtr = &StoredCustomWidgetInfos[IndexNewCustomWidget];
-	NewCustomWidgetInfoPtr->WidgetName = FName(DebugMenuName);
+	NewCustomWidgetInfoPtr->WidgetName = WidgetName;
+	NewCustomWidgetInfoPtr->DebugMenuName = DebugMenuName;
 	
 	FDebugMenuWidget_ArrayHolder* DebugMenuWidget_ArrayHolder = GetDebugMenuFromName(DebugMenuName);
 	if (DebugMenuWidget_ArrayHolder == nullptr)

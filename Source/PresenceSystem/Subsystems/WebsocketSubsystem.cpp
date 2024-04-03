@@ -7,8 +7,8 @@
 #include "WebSocketsModule.h"
 #include "PresenceSystem/DebugMenu/DebugMenu.h"
 
-#define DEBUG_LOG(Text, ...)			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::White, FString::Printf(TEXT(Text), ##__VA_ARGS__));
-#define DEBUG_LOG_BLUE(Text, ...)		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Blue, FString::Printf(TEXT(Text), ##__VA_ARGS__));
+#define DEBUG_LOG(Text, ...)			//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::White, FString::Printf(TEXT(Text), ##__VA_ARGS__));
+#define DEBUG_LOG_BLUE(Text, ...)		//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Blue, FString::Printf(TEXT(Text), ##__VA_ARGS__));
 #define DEBUG_LOG_GREEN(Text, ...)		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Green, FString::Printf(TEXT(Text), ##__VA_ARGS__));
 #define DEBUG_LOG_WARNING(Text, ...)	GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT(Text), ##__VA_ARGS__));
 #define DEBUG_LOG_ERROR(Text, ...)		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, FString::Printf(TEXT(Text), ##__VA_ARGS__));
@@ -95,7 +95,7 @@ void UWebsocketSubsystem::SocketOnClosed(int32 StatusCode, const FString& Reason
 	const FString ReasonMessage = Reason.IsEmpty() ? TEXT("Unknow") : Reason;
 	if (bWasClean)
 	{
-		DEBUG_LOG("WebSocket - Connection closed, Reason=%s", *ReasonMessage);
+		DEBUG_LOG_GREEN("WebSocket - Connection closed, Reason=%s", *ReasonMessage);
 	}
 	DEBUG_LOG_WARNING("WebSocket - Connection closed, Reason=%s", *ReasonMessage);
 	
@@ -104,17 +104,17 @@ void UWebsocketSubsystem::SocketOnClosed(int32 StatusCode, const FString& Reason
 //----------------------------------------------------------------------------------------------------------------------
 void UWebsocketSubsystem::SocketOnMessage(const FString& Message)
 {
-	DEBUG_LOG_GREEN("WebSocket - message received: %s", *Message);
+	DEBUG_LOG("WebSocket - message received: %s", *Message);
 }
 //----------------------------------------------------------------------------------------------------------------------
 void UWebsocketSubsystem::SocketOnRawMessage(const void* Data, SIZE_T Size, SIZE_T BytesRemaining)
 {
-	//DEBUG_LOG_GREEN("SocketOnRawMessage");
+	//DEBUG_LOG("SocketOnRawMessage");
 }
 //----------------------------------------------------------------------------------------------------------------------
 void UWebsocketSubsystem::SocketOnMessageSent(const FString& Message)
 {
-	DEBUG_LOG_BLUE("WebSocket - message sent: %s", *Message);
+	DEBUG_LOG("WebSocket - message sent: %s", *Message);
 }
 //----------------------------------------------------------------------------------------------------------------------
 

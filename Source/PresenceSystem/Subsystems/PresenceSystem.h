@@ -88,6 +88,7 @@ class UDebugMenu_PresenceFriendWidget : public UDebugMenu_CustomWidget
 	GENERATED_BODY()
 
 public:
+	
 	void SetPlayerName(FString InPlayerName) { PlayerName = InPlayerName; }
 	void SetPlayerActivity(EOnline_PlayerActivity InPlayerActivity) { PlayerActivity = InPlayerActivity; }
 	
@@ -106,12 +107,18 @@ class PRESENCESYSTEM_API UPresenceSubsystem : public UGameInstanceSubsystem
 public:
 
 	virtual bool ShouldCreateSubsystem(UObject* Outer) const override;
-
-	void TogglePresence();
-	void SetLocalPlayerName(FString const& InLocalPlayerName);
-	void RequestChangeActivity(EOnline_PlayerActivity NewActivity);
 	
+	void InitializePresenceSubsystem();
+	void RequestChangeActivity(EOnline_PlayerActivity NewActivity);
 	void OnFriendActivityChanged();
+
+private:
+	
+	void TogglePresence();
+	void ConnectToWebsocketServer();
+	void DisconnectFromWebsocketServer();
+	void ChangePlayerActivity();
+	void SetLocalPlayerName(FString const& InLocalPlayerName);
 
 public:
 
@@ -119,10 +126,10 @@ public:
 
 private:
 
-	FString LocalPlayerName;
+	FString LocalPlayerName = "Player1";
 	EOnline_PlayerActivity CurrentLocalActivity;
 
-	FPanDebugMenuCustomWidgetInfo* LocalPlayerWidgetInfo;
+	UDebugMenu_PresenceFriendWidget* LocalPlayerDebugWidget;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
