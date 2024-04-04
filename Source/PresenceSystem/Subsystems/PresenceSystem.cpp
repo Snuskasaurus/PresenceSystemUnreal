@@ -71,11 +71,13 @@ void UPresenceSubsystem::TogglePresence()
 
 	if (CurrentLocalActivity == EOnline_PlayerActivity::DISCONNECTED)
 	{
+		CurrentLocalActivity = EOnline_PlayerActivity::IN_MENU;
 		RequestChangeActivity(EOnline_PlayerActivity::IN_MENU);
 		LocalPlayerDebugWidget->SetPlayerActivity(EOnline_PlayerActivity::IN_MENU);
 	}
 	else
 	{
+		CurrentLocalActivity = EOnline_PlayerActivity::DISCONNECTED;
 		RequestChangeActivity(EOnline_PlayerActivity::DISCONNECTED);
 		LocalPlayerDebugWidget->SetPlayerActivity(EOnline_PlayerActivity::DISCONNECTED);
 	}

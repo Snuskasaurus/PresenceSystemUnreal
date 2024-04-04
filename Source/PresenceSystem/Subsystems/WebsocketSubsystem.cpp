@@ -104,7 +104,7 @@ void UWebsocketSubsystem::SocketOnClosed(int32 StatusCode, const FString& Reason
 //----------------------------------------------------------------------------------------------------------------------
 void UWebsocketSubsystem::SocketOnMessage(const FString& Message)
 {
-	DEBUG_LOG("WebSocket - message received: %s", *Message);
+	DEBUG_LOG_GREEN("WebSocket - message received: %s", *Message);
 }
 //----------------------------------------------------------------------------------------------------------------------
 void UWebsocketSubsystem::SocketOnRawMessage(const void* Data, SIZE_T Size, SIZE_T BytesRemaining)
