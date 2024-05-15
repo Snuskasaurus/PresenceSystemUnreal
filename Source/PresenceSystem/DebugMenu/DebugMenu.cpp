@@ -994,13 +994,6 @@ void UDebugMenuUserWidget::NativeOnInitialized()
 {
 	Super::NativeOnInitialized();
 	
-	UWidget* CanvasWidget = WidgetTree->FindWidget(DEBUG_MENU_CANVAS);
-	DebugMenuCanvas = Cast<UPanelWidget>(CanvasWidget);
-	if (DebugMenuCanvas == nullptr)
-	{
-		UE_LOG(LogTemp, Error, TEXT("No CanvasWidget found, please check that you created a canvas with this name: %hs"), DEBUG_MENU_CANVAS);
-	}
-	
 	UWidget* GrabBorderWidget = WidgetTree->FindWidget(DEBUG_MENU_GRAB);
 	DebugMenuBorder = Cast<UBorder>(GrabBorderWidget);
 	if (DebugMenuBorder == nullptr)

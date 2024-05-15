@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "IWebSocket.h"
+#include "JsonObjectConverter.h"
+#include "PresenceSystem.h"
 #include "WebSocketsModule.h"
 #include "PresenceSystem/DebugMenu/DebugMenu.h"
 
@@ -21,6 +23,8 @@ UE_DISABLE_OPTIMIZATION
 void UWebsocketSubsystem::Connect()
 {
 	WebSocket = FWebSocketsModule::Get().CreateWebSocket(WebSocket_Url, WebSocket_Protocol);
+
+
 	
 	WebSocket->OnConnected().AddLambda([this]() -> void
 		{ UWebsocketSubsystem::SocketOnConnected(); });
@@ -80,6 +84,9 @@ bool UWebsocketSubsystem::TryToSendMessage(FString const& Message)
 void UWebsocketSubsystem::SocketOnConnected()
 {
 	DEBUG_LOG_GREEN("WebSocket - Connection established");
+
+	UPresenceSubsystem* PresenceSystem = GetGameInstance()->GetSubsystem<UPresenceSubsystem>();
+	PresenceSystem->RequestFriendList();
 	
 	IsConnected = true;
 }
@@ -104,7 +111,15 @@ void UWebsocketSubsystem::SocketOnClosed(int32 StatusCode, const FString& Reason
 //----------------------------------------------------------------------------------------------------------------------
 void UWebsocketSubsystem::SocketOnMessage(const FString& Message)
 {
-	DEBUG_LOG_GREEN("WebSocket - message received: %s", *Message);
+	//DEBUG_LOG_GREEN("WebSocket - message received: %s", *Message);
+	
+	FOnline_Response_FriendActivityChanged MessageStruct;
+	bool Success = FJsonObjectConverter::JsonObjectStringToUStruct(Message, &MessageStruct);
+	if (Success)
+	{
+		UPresenceSubsystem* PresenceSystem = GetGameInstance()->GetSubsystem<UPresenceSubsystem>();
+		PresenceSystem->UpdateActivity(MessageStruct.FriendName, MessageStruct.Activity);
+	}
 }
 //----------------------------------------------------------------------------------------------------------------------
 void UWebsocketSubsystem::SocketOnRawMessage(const void* Data, SIZE_T Size, SIZE_T BytesRemaining)

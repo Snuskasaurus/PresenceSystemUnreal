@@ -30,6 +30,7 @@
 UENUM(BlueprintType)
 enum EOnline_PlayerActivity
 {
+	INVALID,
 	DISCONNECTED,
 	IN_MENU,
 	PLAYING,
@@ -40,7 +41,7 @@ enum EOnline_PlayerActivity
 UENUM(BlueprintType)
 enum EOnline_RequestType
 {
-	FriendList,
+	GetFriendList,
 	ChangeActivity,
 };
 
@@ -75,10 +76,13 @@ struct FOnline_RequestContent_ChangeActivity
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+USTRUCT()
 struct FOnline_Response_FriendActivityChanged
 {
-	FString PlayerName;
-	EOnline_PlayerActivity PlayerActivity;
+	GENERATED_BODY()
+	
+	UPROPERTY() FString FriendName;
+	UPROPERTY() TEnumAsByte<EOnline_PlayerActivity> Activity;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -111,16 +115,18 @@ public:
 	
 	void InitializePresenceSubsystem();
 	void RequestChangeActivity(EOnline_PlayerActivity NewActivity);
-	void OnFriendActivityChanged();
+	void RequestFriendList();
+	void UpdateActivity(FString FriendName, EOnline_PlayerActivity NewActivity);
 
 private:
 	
 	void TogglePresence();
 	void ConnectToWebsocketServer();
 	void DisconnectFromWebsocketServer();
-	void ChangePlayerActivity();
+	void OnValueMuSliderChanged(float newValue);
+	void TogglePlayerActivity();
 	void SetLocalPlayerName(FString const& InLocalPlayerName);
-
+	
 public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly) TSubclassOf<UDebugMenu_PresenceFriendWidget> PresenceWidgetClassPreset;
@@ -128,9 +134,10 @@ public:
 private:
 
 	FString LocalPlayerName = "Player1";
-	EOnline_PlayerActivity CurrentLocalActivity;
+	EOnline_PlayerActivity LocalPlayerActivity = EOnline_PlayerActivity::DISCONNECTED;
 
 	UDebugMenu_PresenceFriendWidget* LocalPlayerDebugWidget;
+	TMap<FString, UDebugMenu_PresenceFriendWidget*> FriendPlayerDebugWidgets;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
